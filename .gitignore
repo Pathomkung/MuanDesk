@@ -1,0 +1,36 @@
+node_modules/
+dist/
+artifacts/
+*.log
+src/mini/app.bundle.js
+src/mini/app.bundle.js.LEGAL.txt
+.env
+.env.*
+.codex/
+.idea/
+.vscode/
+coverage/
+user-data/
+userData/
+profiles/
+Partitions/
+Cache/
+Code Cache/
+GPUCache/
+Local Storage/
+Session Storage/
+IndexedDB/
+Cookies*
+Login Data*
+History*
+Local State
+Preferences
+Web Data*
+equalizer.json
+language.json
+*.db
+*.sqlite*
+*.dmp
+*.pem
+*.pfx
+*.p12

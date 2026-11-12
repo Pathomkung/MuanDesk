@@ -1,0 +1,27 @@
+MuanDesk
+Copyright (c) 2026 MuanDesk contributors
+SPDX-License-Identifier: GPL-3.0-only
+
+MuanDesk's original project code and original wave icon are licensed under
+the GNU General Public License, version 3 only.
+
+This program is free software: you can redistribute it and/or modify it
+under the terms of the GNU General Public License as published by the
+Free Software Foundation, version 3 of the License.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License along
+with this program. If not, see https://www.gnu.org/licenses/.
+
+See SOURCE.md for matching source availability and build instructions.
+Third-party components retain their original licenses, copyright notices
+and applicable source obligations. See THIRD_PARTY_NOTICES.md.
+YouTube website content, music, artwork and trademarks are not relicensed
+under this project's license.
+
+This licensing change applies to MuanDesk version 0.8.0 onward. Earlier
+versions already distributed under MIT retain the permissions granted then.

@@ -1,0 +1,28 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>YT Music integration test</title>
+<style>body{background:#121212;color:white;font:24px system-ui;padding:50px}</style>
+<h1>YT Music integration test</h1>
+<p>Testing background playback and Windows media controls.</p>
+<audio id="audio" loop></audio>
+<script>
+window.actions = { next: 0, previous: 0 };
+const audio = document.querySelector('audio');
+// A real 60-second WAV gives Chromium a controllable, audible media session.
+const rate = 8000, count = rate * 60;
+const buffer = new ArrayBuffer(44 + count * 2), view = new DataView(buffer);
+function str(offset, text) { for (let i = 0; i < text.length; i++) view.setUint8(offset+i, text.charCodeAt(i)); }
+str(0, 'RIFF'); view.setUint32(4, 36+count*2, true); str(8, 'WAVEfmt ');
+view.setUint32(16, 16, true); view.setUint16(20, 1, true); view.setUint16(22, 1, true);
+view.setUint32(24, rate, true); view.setUint32(28, rate*2, true);
+view.setUint16(32, 2, true); view.setUint16(34, 16, true); str(36,'data'); view.setUint32(40,count*2,true);
+for(let i=0;i<count;i++) view.setInt16(44+i*2, Math.sin(i*2*Math.PI*220/rate)*500,true);
+audio.src = URL.createObjectURL(new Blob([buffer], {type:'audio/wav'}));
+navigator.mediaSession.metadata = new MediaMetadata({title:'YT Music integration test',artist:'Local test',album:'Windows SMTC'});
+navigator.mediaSession.setActionHandler('play', () => audio.play());
+navigator.mediaSession.setActionHandler('pause', () => audio.pause());
+navigator.mediaSession.setActionHandler('nexttrack', () => window.actions.next++);
+navigator.mediaSession.setActionHandler('previoustrack', () => window.actions.previous++);
+audio.onplay = () => navigator.mediaSession.playbackState = 'playing';
+audio.onpause = () => navigator.mediaSession.playbackState = 'paused';
+</script>

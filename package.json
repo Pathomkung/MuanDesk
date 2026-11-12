@@ -1,0 +1,44 @@
+{
+  "name": "muandesk",
+  "productName": "MuanDesk",
+  "version": "0.8.0",
+  "private": true,
+  "description": "Independent Windows desktop companion for YouTube Music with tray controls and equalizer",
+  "main": "src/main.cjs",
+  "scripts": {
+    "start": "npm run build && electron .",
+    "test": "npm run build && electron test/smoke.cjs",
+    "test:live": "electron test/live-playback.cjs",
+    "test:mini": "npm run build && electron test/mini.cjs",
+    "test:queue": "electron test/queue.cjs",
+    "test:equalizer": "npm run build && electron test/equalizer.cjs",
+    "test:artwork": "electron test/artwork.cjs",
+    "test:login": "electron test/login.cjs",
+    "test:navigation": "node --test test/navigation.test.cjs",
+    "package": "npm run build && node scripts/package.cjs",
+    "build": "node scripts/build-ui.cjs",
+    "test:main-equalizer": "npm run build && electron test/main-equalizer.cjs",
+    "release:check": "node scripts/audit-release.cjs",
+    "release": "npm run package && node scripts/installer.cjs && node scripts/release.cjs",
+    "icons": "electron scripts/render-icon.cjs && powershell -NoProfile -ExecutionPolicy Bypass -File scripts/build-icon.ps1",
+    "test:release": "node --test test/release.test.cjs",
+    "test:language": "npm run build && electron test/language.cjs",
+    "installer": "npm run package && node scripts/installer.cjs",
+    "screenshots": "npm run build && electron scripts/screenshots.cjs",
+    "test:installer": "powershell -NoProfile -ExecutionPolicy Bypass -File test/installer.ps1"
+  },
+  "overrides": {
+    "glob": "^14.0.5",
+    "minimatch": "^11.0.8"
+  },
+  "devDependencies": {
+    "@electron/packager": "20.3.0",
+    "electron": "45.3.1",
+    "electron-builder": "26.18.0",
+    "esbuild": "^0.28.2",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1"
+  },
+  "license": "GPL-3.0-only",
+  "author": "MuanDesk contributors"
+}

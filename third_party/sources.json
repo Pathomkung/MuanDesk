@@ -1,0 +1,6 @@
+{
+  "archives": [
+    { "file": "react-19.3.1-sources.tar.gz", "sha256": "df6b860384f0be8bf6e3ca6ce970226c6be70be2f2cf1cb5ed0c7567b8e4dede", "commit": "61aa00df822d0eb76d0362eb8b6fdd3527693efe", "packages": { "react": "19.3.1", "react-dom": "19.3.1" } },
+    { "file": "scheduler-0.28.0-sources.tar.gz", "sha256": "ef34c2ad2fe4af769cdc8a067d827fbba8fde677d83f5befaa8a8cc5c3a8c6be", "commit": "1d34f91dfde6bba84d08b683aaba164c7194dacb", "packages": { "scheduler": "0.28.0" } }
+  ]
+}

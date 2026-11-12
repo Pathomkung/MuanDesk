@@ -1,0 +1,30 @@
+{
+  "appId": "local.muandesk.desktop",
+  "productName": "MuanDesk",
+  "copyright": "Copyright (c) 2026 MuanDesk contributors",
+  "directories": { "output": "dist/installer", "buildResources": "assets" },
+  "win": {
+    "target": [{ "target": "nsis", "arch": ["x64"] }],
+    "icon": "assets/icon.ico",
+    "signAndEditExecutable": false
+  },
+  "nsis": {
+    "artifactName": "MuanDesk-Setup-${version}-${arch}.${ext}",
+    "oneClick": false,
+    "perMachine": false,
+    "allowElevation": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "MuanDesk",
+    "uninstallDisplayName": "MuanDesk",
+    "deleteAppDataOnUninstall": false,
+    "runAfterFinish": false,
+    "license": "LICENSE",
+    "installerIcon": "assets/icon.ico",
+    "uninstallerIcon": "assets/icon.ico",
+    "installerLanguages": ["en_US", "th_TH"],
+    "displayLanguageSelector": true
+  },
+  "publish": null
+}
