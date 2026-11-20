@@ -57,6 +57,10 @@ function createMiniPlayer(player, tray, media, showPlayer, equalizer, language) 
       case 'select':
         if (typeof command.key !== 'string' || command.key.length > 256) throw new Error('Invalid queue selection');
         return youtubeCommand(player, { type: 'select', key: command.key });
+      case 'seek':
+        if (typeof command.occurrence !== 'string' || !command.occurrence.length || command.occurrence.length > 128
+          || !Number.isFinite(command.seconds)) throw new Error('Invalid seek request');
+        return youtubeCommand(player, { type: 'seek', occurrence: command.occurrence, seconds: command.seconds });
       case 'expand':
         expanded = command.expanded === true; position(); return true;
       case 'show': hide(); showPlayer(); return true;

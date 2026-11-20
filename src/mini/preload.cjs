@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('mini', {
   setEqualizer: settings => ipcRenderer.invoke('mini:request', { type: 'set-equalizer', settings }),
   media: action => ipcRenderer.invoke('mini:request', { type: 'media', action }),
   select: key => ipcRenderer.invoke('mini:request', { type: 'select', key }),
+  seek: (occurrence, seconds) => ipcRenderer.invoke('mini:request', { type: 'seek', occurrence, seconds }),
   expand: expanded => ipcRenderer.invoke('mini:request', { type: 'expand', expanded }),
   show: () => ipcRenderer.invoke('mini:request', { type: 'show' }),
   hide: () => ipcRenderer.invoke('mini:request', { type: 'hide' }),

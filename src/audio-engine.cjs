@@ -13,6 +13,7 @@ function applyAudioSettings(settings, frequencies) {
       return filter;
     });
     const output = context.createGain();
+    const limiterMakeupTrim = 10 ** (-0.484 / 20);
     const limiter = context.createDynamicsCompressor();
     limiter.threshold.value = -1;
     limiter.knee.value = 0;
@@ -49,6 +50,7 @@ function applyAudioSettings(settings, frequencies) {
         if (engine.enabled !== value.enabled) {
           filters.at(-1).disconnect();
           filters.at(-1).connect(value.enabled ? limiter : output);
+          output.gain.value = value.enabled ? limiterMakeupTrim : 1;
         }
         engine.enabled = value.enabled;
         const gains = value.enabled ? value.gains : frequencies.map(() => 0);

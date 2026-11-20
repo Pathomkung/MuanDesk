@@ -20,7 +20,7 @@ const source = [
   'scripts/release-files.cjs', 'scripts/audit-release.cjs', 'scripts/package.cjs', 'scripts/release.cjs', 'scripts/archive.ps1',
   'scripts/installer.cjs', 'scripts/screenshots.cjs',
   'test/smoke.cjs', 'test/live-playback.cjs', 'test/mini.cjs', 'test/equalizer.cjs', 'test/artwork.cjs',
-  'test/login.cjs', 'test/queue.cjs', 'test/navigation.test.cjs', 'test/main-equalizer.cjs',
+  'test/login.cjs', 'test/queue.cjs', 'test/seek.cjs', 'test/navigation.test.cjs', 'test/main-equalizer.cjs',
   'test/media-session.ps1', 'test/player.html', 'test/release.test.cjs', 'test/language.cjs',
   'test/installer.ps1',
   'third_party/README.md', 'third_party/sources.json',

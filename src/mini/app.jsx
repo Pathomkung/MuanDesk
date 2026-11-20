@@ -33,7 +33,85 @@ function Cover({ url, className }) {
   useEffect(() => setFailed(false), [url]);
   return <span className={`cover ${className || ''}`}><Icon name="music"/>{!failed && url?.startsWith('https:') && <img src={url} alt="" onError={() => setFailed(true)}/>}</span>;
 }
-const time = seconds => `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`;
+const time = seconds => Number.isFinite(seconds)
+  ? `${Math.floor(seconds / 60)}:${String(Math.floor(seconds % 60)).padStart(2, '0')}`
+  : '–:––';
+
+function PlaybackTimeline({ elapsed, duration, seek, onSeek }) {
+  const { t } = useContext(LanguageContext);
+  const [interaction, setInteraction] = useState(null);
+  const occurrence = seek?.occurrence;
+  const active = interaction?.occurrence === occurrence ? interaction : null;
+  if (interaction && !active) setInteraction(null);
+
+  const start = seek?.start ?? 0;
+  const end = seek?.end ?? (duration || 1);
+  const clamp = seconds => Math.max(start, Math.min(end, seconds));
+  const displayed = active?.seconds ?? elapsed;
+  const value = clamp(displayed ?? start);
+  const elapsedText = time(displayed);
+  const durationText = time(duration);
+
+  function seekTo(seconds) {
+    const pending = { kind: 'pending', occurrence, seconds: clamp(seconds) };
+    setInteraction(pending);
+    onSeek(occurrence, pending.seconds).finally(() => {
+      setInteraction(current => current === pending ? null : current);
+    });
+  }
+
+  function pointerTime(event) {
+    const { left, width } = event.currentTarget.getBoundingClientRect();
+    const thumbSize = parseFloat(getComputedStyle(event.currentTarget).getPropertyValue('--timeline-thumb-size'));
+    if (width <= thumbSize) return value;
+    const fraction = (event.clientX - left - thumbSize / 2) / (width - thumbSize);
+    return clamp(start + fraction * (end - start));
+  }
+
+  function startDrag(event) {
+    if (!seek || !event.isPrimary || event.button !== 0) return;
+    event.preventDefault();
+    event.currentTarget.focus();
+    event.currentTarget.setPointerCapture(event.pointerId);
+    setInteraction({ kind: 'drag', occurrence, pointerId: event.pointerId, seconds: pointerTime(event) });
+  }
+
+  function moveDrag(event) {
+    if (active?.kind === 'drag' && event.pointerId === active.pointerId) {
+      setInteraction({ ...active, seconds: pointerTime(event) });
+    }
+  }
+
+  function finishDrag(event, commit = false) {
+    if (active?.kind !== 'drag' || (event.pointerId != null && event.pointerId !== active.pointerId)) return;
+    if (commit) seekTo(pointerTime(event));
+    else setInteraction(null);
+  }
+
+  function keyboard(event) {
+    if (event.key === 'Escape' && active?.kind === 'drag') {
+      event.preventDefault();
+      finishDrag(event);
+      return;
+    }
+    const targets = { ArrowLeft: value - 5, ArrowDown: value - 5, ArrowRight: value + 5, ArrowUp: value + 5, Home: start, End: end };
+    if (!Object.hasOwn(targets, event.key)) return;
+    event.preventDefault();
+    if (active?.kind !== 'drag') seekTo(targets[event.key]);
+  }
+
+  return <div className="timeline">
+    <span id="time">{elapsedText}</span>
+    <input id="progress" type="range" min={start} max={end} step="any" value={value} disabled={!seek}
+      aria-label={t('seekPosition')} aria-valuetext={t('progressValue', { elapsed: elapsedText, duration: durationText })}
+      style={{ '--played': `${(value - start) / (end - start) * 100}%` }}
+      onPointerDown={startDrag} onPointerMove={moveDrag} onPointerUp={event => finishDrag(event, true)}
+      onPointerCancel={finishDrag} onLostPointerCapture={finishDrag} onBlur={finishDrag} onKeyDown={keyboard}
+      onChange={event => { if (active?.kind !== 'drag') seekTo(event.currentTarget.valueAsNumber); }}/>
+    <span id="duration">{durationText}</span>
+  </div>;
+}
+
 function PresetDropdown({ value, presets, onChange, visible }) {
   const { t } = useContext(LanguageContext);
   const options = [{ id: 'custom' }, ...presets].map(item => ({ ...item, label: t(item.id) }));
@@ -103,31 +181,70 @@ function Equalizer({ data, update, visible }) {
 }
 function App() {
   const { t, locale } = useContext(LanguageContext);
-  const [state, setState] = useState({ title: '', artist: '', queue: [], paused: true, time: 0, duration: 0 });
+  const [state, setState] = useState({ title: '', artist: '', queue: [], paused: true, time: null, duration: null, seek: null });
   const [panel, setPanel] = useState(null), panelRef = useRef(null);
   const [eq, setEq] = useState(null), [error, setError] = useState('');
   const pending = useRef(null), saving = useRef(false), timer = useRef(null), revision = useRef(0);
+  const playback = useRef({ occurrence: null, request: 0, confirmed: 0 });
+  const refreshAfterSeek = useRef(null);
   function showError(error) { setError(error.message || t('connectionError')); }
   async function run(action) { try { await action(); } catch (error) { showError(error); } }
+  async function seekTo(occurrence, seconds) {
+    if (playback.current.occurrence !== occurrence) return;
+    const request = ++playback.current.request;
+    const isCurrent = () => request === playback.current.request && occurrence === playback.current.occurrence;
+    try {
+      const result = await window.mini.seek(occurrence, seconds);
+      if (!isCurrent()) return;
+      if (result.status === 'stale') {
+        await refreshAfterSeek.current?.();
+        return;
+      }
+      playback.current.confirmed++;
+      setState(current => ({ ...current, time: result.time }));
+      setError(current => current === 'seekFailed' ? '' : current);
+    } catch {
+      if (!isCurrent()) return;
+      await refreshAfterSeek.current?.();
+      if (isCurrent()) setError('seekFailed');
+    }
+  }
   useEffect(() => { if (!error) return; const timeout = setTimeout(() => setError(''), 4500); return () => clearTimeout(timeout); }, [error]);
   useEffect(() => {
-    let disposed = false, refreshing = false;
-    async function refresh() {
-      if (disposed || refreshing || document.hidden) return;
-      refreshing = true;
+    let disposed = false, refreshing = null;
+    async function readSnapshot() {
       try {
-        const next = await window.mini.snapshot(); if (!disposed) setState(next);
+        const confirmed = playback.current.confirmed;
+        const next = await window.mini.snapshot();
+        if (!disposed && confirmed === playback.current.confirmed) {
+          playback.current.occurrence = next.seek?.occurrence ?? null;
+          setState(next);
+        }
         if (panelRef.current === 'eq' && !pending.current && !saving.current) {
           const current = revision.current, data = await window.mini.equalizer();
           if (!disposed && current === revision.current) setEq(data);
         }
       } catch (error) { if (!disposed) showError(error); }
-      finally { refreshing = false; }
     }
+    function refresh() {
+      if (disposed || document.hidden) return;
+      refreshing ??= readSnapshot().finally(() => { refreshing = null; });
+      return refreshing;
+    }
+    refreshAfterSeek.current = async () => {
+      if (refreshing) await refreshing;
+      await refresh();
+    };
     function keydown(event) { if (event.key === 'Escape' && !event.defaultPrevented) run(() => window.mini.hide()); }
     document.addEventListener('keydown', keydown); document.addEventListener('visibilitychange', refresh); window.mini.onRefresh(refresh);
     const interval = setInterval(refresh, 1000); refresh();
-    return () => { disposed = true; clearInterval(interval); document.removeEventListener('keydown', keydown); document.removeEventListener('visibilitychange', refresh); };
+    return () => {
+      disposed = true;
+      refreshAfterSeek.current = null;
+      clearInterval(interval);
+      document.removeEventListener('keydown', keydown);
+      document.removeEventListener('visibilitychange', refresh);
+    };
   }, []);
   async function showPanel(next) {
     const value = panelRef.current === next ? null : next;
@@ -154,7 +271,8 @@ function App() {
     flushSync(() => setEq(previous => ({ ...previous, settings })));
     clearTimeout(timer.current); timer.current = setTimeout(save, 80);
   }
-  const current = state.queue.findIndex(item => item.current), queue = state.queue.slice(current < 0 ? 0 : current);
+  const queueStart = Math.max(0, state.queue.findIndex(item => item.current));
+  const queue = state.queue.slice(queueStart);
   return <main>
     <header><span className="brand"><img src="../../assets/icon.png" alt=""/>MuanDesk</span><div>
       <IconButton id="eq-button" name="eq" label={t('openEq')} aria-expanded={panel === 'eq'} aria-controls="eq-panel" onClick={() => run(() => showPanel('eq'))}/>
@@ -162,9 +280,9 @@ function App() {
     </div></header>
     <section className="now" aria-label={t('nowPlaying')}><Cover url={state.artwork}/><div className="info"><h1 id="title" title={state.title}>{state.title || t('chooseSong')}</h1><p id="artist">{state.artist || t('chooseInPlayer')}</p><span id="ad" hidden={!state.ad}>{t('ad')}</span></div></section>
     <div className="transport"><IconButton id="previous" name="previous" label={t('previous')} disabled={!state.title} onClick={() => run(() => window.mini.media('previous'))}/><button id="toggle" className="play" aria-label={state.paused ? t('play') : t('pause')} disabled={!state.title} onClick={() => run(() => window.mini.media('toggle'))}><Icon name={state.paused ? 'play' : 'pause'}/></button><IconButton id="next" name="next" label={t('next')} disabled={!state.title} onClick={() => run(() => window.mini.media('next'))}/></div>
-    <div className="timeline"><span id="time">{time(state.time)}</span><progress id="progress" value={state.time} max={state.duration || 1} aria-label={t('progress')}/><span id="duration">{time(state.duration)}</span></div>
+    <PlaybackTimeline elapsed={state.time} duration={state.duration} seek={state.seek} onSeek={seekTo}/>
     <button id="expand" aria-expanded={panel === 'queue'} aria-controls="queue-panel" onClick={() => run(() => showPanel('queue'))}><span>{t('upNext')} <span id="count" className="muted">{queue.length ? t('songs', { count: queue.filter(item => !item.current).length }) : ''}</span></span><Icon id="chevron" name="chevron"/></button>
-    <section id="queue-panel" hidden={panel !== 'queue'} aria-label={t('queue')}><p className="queue-hint">{t('chooseToPlay')}</p><div id="queue" role="group" aria-label={t('songList')}>{queue.map(item => <button key={item.key} className="song" aria-current={item.current} data-key={item.key} disabled={item.disabled} title={`${item.title} • ${item.artist}`} onClick={() => run(() => window.mini.select(item.key))}><Cover url={item.artwork} className="song-cover"/><span className="song-text"><span className="song-title">{item.title}</span><span className="song-artist">{item.current ? t('nowPlaying') + ' • ' : ''}{item.artist}</span></span><span className="song-duration">{item.duration}</span></button>)}</div><p id="empty" className="empty" hidden={queue.length > 0}>{t('emptyQueue')}</p></section>
+    <section id="queue-panel" hidden={panel !== 'queue'} aria-label={t('queue')}><p className="queue-hint">{t('chooseToPlay')}</p><div id="queue" role="group" aria-label={t('songList')}>{queue.map((item, index) => <button key={`${queueStart + index}:${item.key}`} className="song" aria-current={item.current} data-key={item.key} disabled={item.disabled} title={`${item.title} • ${item.artist}`} onClick={() => run(() => window.mini.select(item.key))}><Cover url={item.artwork} className="song-cover"/><span className="song-text"><span className="song-title">{item.title}</span><span className="song-artist">{item.current ? t('nowPlaying') + ' • ' : ''}{item.artist}</span></span><span className="song-duration">{item.duration}</span></button>)}</div><p id="empty" className="empty" hidden={queue.length > 0}>{t('emptyQueue')}</p></section>
     <section id="eq-panel" hidden={panel !== 'eq'} aria-label="Equalizer">{eq && <Equalizer data={eq} update={update} visible={panel === 'eq'}/>}</section><p id="error" role="status" hidden={!error}>{translateError(locale, error)}</p>
   </main>;
 }

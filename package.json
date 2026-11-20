@@ -1,7 +1,7 @@
 {
   "name": "muandesk",
   "productName": "MuanDesk",
-  "version": "0.8.0",
+  "version": "0.8.1",
   "private": true,
   "description": "Independent Windows desktop companion for YouTube Music with tray controls and equalizer",
   "main": "src/main.cjs",
@@ -10,7 +10,8 @@
     "test": "npm run build && electron test/smoke.cjs",
     "test:live": "electron test/live-playback.cjs",
     "test:mini": "npm run build && electron test/mini.cjs",
-    "test:queue": "electron test/queue.cjs",
+    "test:queue": "npm run build && electron test/queue.cjs",
+    "test:seek": "npm run build && electron test/seek.cjs",
     "test:equalizer": "npm run build && electron test/equalizer.cjs",
     "test:artwork": "electron test/artwork.cjs",
     "test:login": "electron test/login.cjs",
